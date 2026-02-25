@@ -127,6 +127,46 @@ impl CPU {
             (0, 0, 0xE, 0) => {
                 self.display = [false; 2048];
             }
+            (0xD, _, _, _) => {
+                let x_coord = (self.v[x] as usize) % 64;
+                let y_coord = (self.v[y] as usize) % 32;
+
+                let height = n4 as usize;
+
+                self.v[0xF] = 0;
+
+                for row in 0..height {
+                    let sprite_byte = self.memory[(self.i as usize) + row];
+                    for col in 0..8 {
+                        let sprite_pixel = sprite_byte & (0x80 >> col);
+                        if sprite_pixel != 0 {
+                            let target_x = x_coord + col;
+                            let target_y = y_coord + row;
+
+                            if target_x < 64 && target_y < 32 {
+                                let index = target_x + (target_y * 64);
+
+                                if self.display[index] == true {
+                                    self.v[0xF] = 1;
+                                }
+                                self.display[index] ^= true;
+                            }
+                        }
+                    }
+                }
+            }
+            (0xF, _, _, _) => match nn {
+                0x07 => {
+                    self.v[x] = self.delay_timer;
+                }
+                0x15 => {
+                    self.delay_timer = self.v[x];
+                }
+                0x18 => {
+                    self.sound_timer = self.v[x];
+                }
+                _ => unimplemented!("FX opcode {:04X} not implemented", opcode),
+            },
             _ => unimplemented!("Opcode {:04X} not implemented yet", opcode),
         }
     }
