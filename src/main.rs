@@ -1,3 +1,5 @@
+use rand::{Rng, rng};
+
 #[allow(unused)]
 struct CPU {
     memory: [u8; 4096],
@@ -9,6 +11,7 @@ struct CPU {
     delay_timer: u8,
     sound_timer: u8,
     display: [bool; 2048],
+    keys: [bool; 16],
 }
 
 impl CPU {
@@ -23,6 +26,7 @@ impl CPU {
             delay_timer: 0,
             sound_timer: 0,
             display: [false; 2048],
+            keys: [false; 16],
         }
     }
     pub fn fetch(&mut self) -> u16 {
@@ -127,6 +131,11 @@ impl CPU {
             (0, 0, 0xE, 0) => {
                 self.display = [false; 2048];
             }
+            (0xC, _, _, _) => {
+                let num: u8 = rand::random();
+
+                self.v[x] = num & nn;
+            }
             (0xD, _, _, _) => {
                 let x_coord = (self.v[x] as usize) % 64;
                 let y_coord = (self.v[y] as usize) % 32;
@@ -155,6 +164,18 @@ impl CPU {
                     }
                 }
             }
+            (0xE, _, 9, 0xE) => {
+                let idx = self.v[x] as usize;
+                if self.keys[idx] == true {
+                    self.pc += 2;
+                }
+            }
+            (0xE, _, 0xA, 1) => {
+                let idx = self.v[x] as usize;
+                if self.keys[idx] == false {
+                    self.pc += 2;
+                }
+            }
             (0xF, _, _, _) => match nn {
                 0x07 => {
                     self.v[x] = self.delay_timer;
@@ -164,6 +185,19 @@ impl CPU {
                 }
                 0x18 => {
                     self.sound_timer = self.v[x];
+                }
+                0x0A => {
+                    let mut key_pressed = false;
+                    for (i, pressed) in self.keys.iter().enumerate() {
+                        if *pressed {
+                            self.v[x] = i as u8;
+                            key_pressed = true;
+                            break;
+                        }
+                    }
+                    if !key_pressed {
+                        self.pc -= 2;
+                    }
                 }
                 _ => unimplemented!("FX opcode {:04X} not implemented", opcode),
             },
