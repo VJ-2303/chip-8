@@ -1,5 +1,5 @@
-use std::thread;
 use std::time::{Duration, Instant};
+use std::{fs, thread};
 
 use minifb::{Scale, Window, WindowOptions};
 
@@ -264,12 +264,11 @@ impl CPU {
 fn main() {
     let mut cpu = CPU::new();
 
-    cpu.memory[0x200] = 0x12;
-    cpu.memory[0x201] = 0x00;
-
-    cpu.display[0] = true;
-    cpu.display[1] = true;
-    cpu.display[2] = true;
+    let rom_data =
+        fs::read("/home/vj/Documents/PONG.ch8").expect("Could not find or read the ROM file!");
+    for (i, &byte) in rom_data.iter().enumerate() {
+        cpu.memory[0x200 + i] = byte;
+    }
 
     let mut buffer: Vec<u32> = vec![0; 64 * 32];
     let mut window = Window::new(
@@ -285,6 +284,60 @@ fn main() {
     let mut last_timer_update = Instant::now();
 
     loop {
+        cpu.keys = [false; 16];
+
+        // 2. Map physical keys to CHIP-8 keys
+        if window.is_key_down(minifb::Key::Key1) {
+            cpu.keys[0x1] = true;
+        }
+        if window.is_key_down(minifb::Key::Key2) {
+            cpu.keys[0x2] = true;
+        }
+        if window.is_key_down(minifb::Key::Key3) {
+            cpu.keys[0x3] = true;
+        }
+        if window.is_key_down(minifb::Key::Key4) {
+            cpu.keys[0xC] = true;
+        }
+
+        if window.is_key_down(minifb::Key::Q) {
+            cpu.keys[0x4] = true;
+        }
+        if window.is_key_down(minifb::Key::W) {
+            cpu.keys[0x5] = true;
+        }
+        if window.is_key_down(minifb::Key::E) {
+            cpu.keys[0x6] = true;
+        }
+        if window.is_key_down(minifb::Key::R) {
+            cpu.keys[0xD] = true;
+        }
+
+        if window.is_key_down(minifb::Key::A) {
+            cpu.keys[0x7] = true;
+        }
+        if window.is_key_down(minifb::Key::S) {
+            cpu.keys[0x8] = true;
+        }
+        if window.is_key_down(minifb::Key::D) {
+            cpu.keys[0x9] = true;
+        }
+        if window.is_key_down(minifb::Key::F) {
+            cpu.keys[0xE] = true;
+        }
+
+        if window.is_key_down(minifb::Key::Z) {
+            cpu.keys[0xA] = true;
+        }
+        if window.is_key_down(minifb::Key::X) {
+            cpu.keys[0x0] = true;
+        }
+        if window.is_key_down(minifb::Key::C) {
+            cpu.keys[0xB] = true;
+        }
+        if window.is_key_down(minifb::Key::V) {
+            cpu.keys[0xF] = true;
+        }
         let opcode = cpu.fetch();
         cpu.execute(opcode);
 
