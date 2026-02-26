@@ -1,3 +1,8 @@
+use std::thread;
+use std::time::{Duration, Instant};
+
+use minifb::{Scale, Window, WindowOptions};
+
 #[allow(unused)]
 struct CPU {
     memory: [u8; 4096],
@@ -153,7 +158,6 @@ impl CPU {
             }
             (0xC, _, _, _) => {
                 let num: u8 = rand::random();
-
                 self.v[x] = num & nn;
             }
             (0xD, _, _, _) => {
@@ -259,9 +263,41 @@ impl CPU {
 
 fn main() {
     let mut cpu = CPU::new();
-    cpu.memory[0x200] = 0x1A;
-    cpu.memory[0x201] = 0x2B;
-    let opcode = cpu.fetch();
-    cpu.execute(opcode);
-    println!("PC = {:04X}", cpu.pc);
+
+    cpu.memory[0x200] = 0x12;
+    cpu.memory[0x201] = 0x00;
+
+    cpu.display[0] = true;
+    cpu.display[1] = true;
+    cpu.display[2] = true;
+
+    let mut buffer: Vec<u32> = vec![0; 64 * 32];
+    let mut window = Window::new(
+        "My CHIP-8 Emulator",
+        64,
+        32,
+        WindowOptions {
+            scale: Scale::X16,
+            ..WindowOptions::default()
+        },
+    )
+    .unwrap();
+    let mut last_timer_update = Instant::now();
+
+    loop {
+        let opcode = cpu.fetch();
+        cpu.execute(opcode);
+
+        if last_timer_update.elapsed() >= Duration::from_millis(16) {
+            cpu.delay_timer = cpu.delay_timer.saturating_sub(1);
+            cpu.sound_timer = cpu.sound_timer.saturating_mul(1);
+            last_timer_update = Instant::now();
+        }
+
+        for (i, &pixel) in cpu.display.iter().enumerate() {
+            buffer[i] = if pixel { 0xFFFFFF } else { 0x000000 }
+        }
+        window.update_with_buffer(&buffer, 64, 32).unwrap();
+        thread::sleep(Duration::from_millis(2));
+    }
 }
