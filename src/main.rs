@@ -1,5 +1,3 @@
-use rand::{Rng, rng};
-
 #[allow(unused)]
 struct CPU {
     memory: [u8; 4096],
@@ -14,9 +12,28 @@ struct CPU {
     keys: [bool; 16],
 }
 
+const FONT_SET: [u8; 80] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+
 impl CPU {
     pub fn new() -> Self {
-        CPU {
+        let mut cpu = CPU {
             memory: [0; 4096],
             v: [0; 16],
             i: 0,
@@ -27,7 +44,10 @@ impl CPU {
             sound_timer: 0,
             display: [false; 2048],
             keys: [false; 16],
-        }
+        };
+
+        cpu.memory[0..80].copy_from_slice(&FONT_SET);
+        cpu
     }
     pub fn fetch(&mut self) -> u16 {
         let mut byte1 = self.memory[self.pc as usize] as u16;
@@ -198,6 +218,29 @@ impl CPU {
                     if !key_pressed {
                         self.pc -= 2;
                     }
+                }
+                0x29 => {
+                    self.i = (self.v[x] as u16) * 5;
+                }
+                0x1E => {
+                    self.i += self.v[x] as u16;
+                }
+                0x55 => {
+                    for idx in 0..=x {
+                        self.memory[self.i as usize + idx] = self.v[idx];
+                    }
+                }
+                0x65 => {
+                    for idx in 0..=x {
+                        self.v[idx] = self.memory[(self.i as usize) + idx];
+                    }
+                }
+                0x33 => {
+                    let i = self.i as usize;
+                    let value = self.v[x];
+                    self.memory[i] = value / 100;
+                    self.memory[i + 1] = (value % 100) / 10;
+                    self.memory[i + 2] = value % 10;
                 }
                 _ => unimplemented!("FX opcode {:04X} not implemented", opcode),
             },
